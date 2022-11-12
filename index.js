@@ -36,41 +36,72 @@ app.get("/login", (req, res) => {
 });
 
 
+app.post("/testlogin/validate", function(req, res) {
+    console.log('receiving data...');
+    var eid = req.body.employeeid;
+    var epwd = req.body.password;
+    
+    var countQuery = `SELECT COUNT(name) AS numrows FROM login WHERE emp_id = '${eid}' and password = '${epwd}'`;
+    
+    connection.query(countQuery, (err, results, fields) => {
+        if(err) throw err;
+        var obj = {};
+        
+        if(results[0].numrows == 0) {
+            obj['message'] = "Failure";
+        }
+        else if(results[0].numrows == 1) {
+            obj['message'] = "Success";
+        }
+        obj['data'] = req.body;
+        res.send(obj);       
+    })
+});
+
 app.post("/login/validate", function(req, res) {
     console.log('receiving data...');
     var eid = req.body.employeeid;
     var epwd = req.body.password;
-    // console.log(eid);
-    // console.log(epwd);
-
-    var countQuery = `SELECT COUNT(name) AS numrows FROM login WHERE emp_id = '${eid}' and password = '${epwd}'`;
-
-    connection.query(countQuery, (err, results, fields) => {
+    
+    var selectQuery = `SELECT * FROM login WHERE emp_id = '${eid}' and password = '${epwd}'`;
+    
+    connection.query(selectQuery, (err, results, fields) => {
         if(err) throw err;
-        // pushToResponse("data", req.body);
-        var obj = {};
+        var obj = {};      
+        obj['data'] = {};
         
-        if(results[0].numrows == 0) {
-            // console.log("Harish");
+        if(results[0] == null) {
             obj['message'] = "Failure";
-            // pushToResponse("message", "Success");
-            // validateResponse.push("message : Success");
+            obj['data']['employeeid'] = req.body.employeeid;
+            obj['data']['dept'] = 'Invalid';
+            obj['data']['name'] = 'Invalid';
         }
-        else if(results[0].numrows == 1) {
-            // console.log("Athulya");
+        else {
             obj['message'] = "Success";
-            // pushToResponse("message", "Failure");
-            // validateResponse.push("message : Failure");
+            obj['data']['employeeid'] = req.body.employeeid;
+            obj['data']['dept'] = results[0].dept;
+            obj['data']['name'] = results[0].name;
         }
-        obj['data'] = req.body;
-        validateResponse.push(obj);
-        res.send(validateResponse);       
-    })
-    
-    
+        
+        res.send(obj);       
+    })    
 });
 
+app.post("/login/val", (req, res) => {
+    var eid = req.body.employeeid;
+    var epwd = req.body.password;
 
+    console.log(eid);
+    console.log(epwd);
+    var selectQuery = `SELECT * FROM login WHERE emp_id = '${eid}' and password = '${epwd}'`;
+    
+    connection.query(selectQuery, (err, results, fields) => {
+        if(err) throw err;
+        // console.log(results);
+        res.send(results[0].name);
+    })
+    
+});
 
 
 app.listen(process.env.PORT || 5000);
