@@ -1,10 +1,14 @@
 var express = require('express');
 const connection = require('./utils/conn.js')
+const thgconn = require('./utils/thgconn');
+
 var bodyParser = require('body-parser');
 
 var app = express();
 
 var validateResponse = [];
+var totalRooms;
+var occupiedRooms;
 
 function pushToResponse(name, val) {
     var obj = {};
@@ -102,6 +106,82 @@ app.post("/login/val", (req, res) => {
     })
     
 });
+
+app.post("/login/id", (req, res) => {
+    var eid = req.body.employeeid;
+
+    console.log(eid);
+
+    var selectQuery = `SELECT * FROM login WHERE emp_id = '${eid}'`;
+    connection.query(selectQuery, (err, results, fields) => {
+        var object = {};
+        if(err) throw err;
+        if(results[0] == null) {
+            object['status'] = "Invalid";
+            object['name'] = "Invalid";
+            object['dept'] = "Invalid";
+        }
+        else {
+            object['status'] = "Success";
+            object['name'] = results[0].name;
+            object['dept'] = results[0].dept;
+        }
+        console.log(results[0]);
+        res.send(object);
+    });
+});
+
+app.get("/occupancy/count", (req, res) => {
+    var totalQuery = `SELECT COUNT(*) AS total FROM master_beds mb WHERE mb.room_id IN(SELECT mr.id FROM master_rooms mr)`;
+    var ocpQuery = `select COUNT(*) AS ocp from patient_schedules ps where ps.patient_id in (select DISTINCT(patient_id) from leads) and ps.status!='Cancelled' and ps.schedule_date=curdate()`;
+
+    var total;
+    var occupied;
+
+    thgconn.query(totalQuery, (err, results, fields) => {
+        if(err) throw err;
+        totalRooms = results[0].total;
+
+        total = setTotalRooms(results);
+    });
+
+    thgconn.query(ocpQuery, (err, results, fields) => {
+        if(err) throw err;
+
+        occupied = setOccupiedRooms(results);
+        var data = {};
+        data['total'] = total;
+        data['occupied'] = occupied;
+        data['vacant'] = getVacantRooms();
+
+        res.send(data);
+    });
+
+});
+
+function setTotalRooms(value) {
+    totalRooms = value[0].total;
+    console.log(totalRooms);
+    return totalRooms;
+}
+
+function setOccupiedRooms(value) {
+    occupiedRooms = value[0].ocp;
+    console.log(occupiedRooms);
+    return occupiedRooms;
+}
+
+function getVacantRooms() {
+    vacantRooms = totalRooms - occupiedRooms;
+    console.log(vacantRooms);
+    return vacantRooms;
+}
+function getTotalRooms() {
+    return totalRooms;
+}
+function getOccupiedRooms() {
+    return occupiedRooms;
+}
 
 
 app.listen(process.env.PORT || 5000);
