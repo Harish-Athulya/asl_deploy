@@ -199,7 +199,7 @@ app.get("/occupancy/count/:id", (req, res) => {
 
     
     thgconn.query(branchCountQuery, (err, results, fields) => {
-        if(err) print("Athulya");
+        if(err) throw err;
         // if(results[0] != null) {
             branchTotal = setBranchCount(results[0].branch_count);
             console.log(branchTotal);
@@ -209,11 +209,12 @@ app.get("/occupancy/count/:id", (req, res) => {
     });
     
     thgconn.query(branchOccupiedQuery, (err, results, fields) => {
-        if(err) print("Harish");
+        if(err) throw err;
         branchOcp = setOccupiedCount(results[0].ocp_count);
         console.log(branchOcp);
 
         var data = {};
+        data["branch"] = branch;
         data["total"] = branchTotal;
         data["occupied"] = branchOcp;
         data["vacant"] = branchTotal - branchOcp;
