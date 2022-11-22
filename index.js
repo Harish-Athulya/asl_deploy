@@ -10,6 +10,10 @@ var validateResponse = [];
 var totalRooms;
 var occupiedRooms;
 
+var branchTotal;
+var branchOcp;
+var branchVacant;
+
 function pushToResponse(name, val) {
     var obj = {};
     obj[name] = val;
@@ -133,7 +137,7 @@ app.post("/login/id", (req, res) => {
 
 app.get("/occupancy/count", (req, res) => {
     var totalQuery = `SELECT COUNT(*) AS total FROM master_beds mb WHERE mb.room_id IN(SELECT mr.id FROM master_rooms mr)`;
-    var ocpQuery = `select COUNT(*) AS ocp from patient_schedules ps where ps.patient_id in (select DISTINCT(patient_id) from leads) and ps.status!='Cancelled' and ps.schedule_date=curdate()`;
+    var ocpQuery = `SELECT COUNT(*) AS ocp from patient_schedules ps where ps.patient_id in (select DISTINCT(patient_id) from leads) and ps.status!='Cancelled' and ps.schedule_date=curdate()`;
 
     var total;
     var occupied;
@@ -145,6 +149,7 @@ app.get("/occupancy/count", (req, res) => {
         total = setTotalRooms(results);
     });
 
+
     thgconn.query(ocpQuery, (err, results, fields) => {
         if(err) throw err;
 
@@ -154,10 +159,85 @@ app.get("/occupancy/count", (req, res) => {
         data['occupied'] = occupied;
         data['vacant'] = getVacantRooms();
 
-        res.send(data);
+        res.json(data);
     });
 
 });
+
+app.get("/occupancy/count/:id", (req, res) => {
+    var branch = req.params.id;
+    var branch_id;
+    
+    switch (branch) {
+        case "Perungudi":
+            branch_id = 1;
+            break;
+        case "Arumbakkam":
+            branch_id = 2;
+            break;
+        case "Neelankarai":
+            branch_id = 3;
+            break;
+        case "Pallavaram":
+            branch_id = 4;
+            break;
+        case "Kasavanahalli":
+            branch_id = 5;
+            break;
+        default:
+            branch_id = 999;
+            break;
+    }
+
+    /* if(branch_id == 999) {
+        // throw "Invalid Branch Name";
+        res.json("Invalid Branch Name");
+    } */
+
+    var branchCountQuery = `SELECT COUNT(*) AS branch_count FROM master_rooms WHERE branch_id = ${branch_id}`;
+    var branchOccupiedQuery = `SELECT COUNT(*) AS ocp_count from patient_schedules ps where ps.patient_id in (select DISTINCT(patient_id) from leads WHERE branch_id = ${branch_id}) and ps.status!='Cancelled' and ps.schedule_date=curdate()`;
+
+    
+    thgconn.query(branchCountQuery, (err, results, fields) => {
+        if(err) print("Athulya");
+        // if(results[0] != null) {
+            branchTotal = setBranchCount(results[0].branch_count);
+            console.log(branchTotal);
+        // }
+        
+        // res.send(data);
+    });
+    
+    thgconn.query(branchOccupiedQuery, (err, results, fields) => {
+        if(err) print("Harish");
+        branchOcp = setOccupiedCount(results[0].ocp_count);
+        console.log(branchOcp);
+
+        var data = {};
+        data["total"] = branchTotal;
+        data["occupied"] = branchOcp;
+        data["vacant"] = branchTotal - branchOcp;
+        res.send(data);
+    });
+
+
+    // res.send("Invalid Parameters");
+})
+
+function setBranchCount(value) {
+    branchTotal = value;
+    return branchTotal;
+}
+
+function setOccupiedCount(value) {
+    branchOcp = value;
+    return branchOcp;
+}
+
+function getBranchVacant() {
+    branchVacant = branchTotal - branchOcp;
+    return branchVacant;
+}
 
 function setTotalRooms(value) {
     totalRooms = value[0].total;
